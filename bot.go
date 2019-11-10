@@ -282,6 +282,7 @@ func main() {
 			log.Fatal(err)
 		}
 		chats.AddChat(*m.Chat)
+		go sendUserToChan(userChannel, m.Chat)
 	})
 
 	b.Handle("/start", func(m *tb.Message) {
@@ -290,6 +291,7 @@ func main() {
 			log.Fatal(err)
 		}
 		chats.AddChat(*m.Chat)
+		go sendUserToChan(userChannel, m.Chat)
 	})
 
 	b.Handle("/info", func(m *tb.Message) {
