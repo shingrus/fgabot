@@ -134,6 +134,8 @@ func InitAdvice() (advice *Advice) {
 	db, err := bolt.Open(ADVICES_DB, 0600, nil)
 	if err == nil {
 		advice.db = db
+	} else {
+		log.Fatalf("Can't open database: %s", err) //dumb ipc sync
 	}
 	go advice.updateAdviceEveryNsec(ADVICE_UPDATE_INTERVAL)
 	return
