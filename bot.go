@@ -13,8 +13,7 @@ import (
 	//"github.com/boltdb/bolt"
 )
 
-	const tokenEnvVar = "TELETOKEN"
-
+const tokenEnvVar = "TELETOKEN"
 
 const hourToSendEnvVar = "HOURTOSEND"
 
@@ -23,7 +22,7 @@ const chatsBucket = "chats"
 const sendDateBucket = "sendDateBucket"
 const sendDateKey = "sendDateKey"
 
-const TEXT_START = "Каждое утро тебя будет ждать новый охуительный совет."
+const TEXT_START = "Каждое утро тебя будет ждать новый охуительный совет, %s."
 const TEXT_STOP = "@%s, заебало тебе писать, все равно не читаешь"
 const TEXT_INFO = "Это бот заебатых советов. Каждый день в 9:00 тебя будет ждать новый совет. Источник советов: http://fucking-great-advice.ru/"
 
@@ -284,7 +283,6 @@ func main() {
 		}
 		chats.AddChat(*m.Chat)
 	})
-
 
 	b.Handle("/start", func(m *tb.Message) {
 		_, err := b.Send(m.Chat, fmt.Sprintf(TEXT_START, m.Sender.Username))
