@@ -91,14 +91,13 @@ func (advice *Advice) updateAdvice() (text string) {
 
 				advice.mut.Lock()
 
-				advice.mut.Lock()
+				defer advice.mut.Unlock()
 
 				fmt.Printf("Advice: id:%d, text: %s\n", jval.Id, jval.Text)
 
 				advice.lastText = jval.Text
 				text = jval.Text
 				advice.updateTime = time.Now()
-				defer advice.mut.Unlock()
 
 				if advice.db != nil {
 					err := advice.db.Update(func(tx *bolt.Tx) error {
