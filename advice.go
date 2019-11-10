@@ -3,24 +3,26 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/boltdb/bolt"
 	"log"
 	"net/http"
 	"sync"
 	"time"
 )
 
-const ADVICE_UPDATE_INTERVAL = 7200
+const ADVICE_UPDATE_INTERVAL = 60
 const apiUrl = "http://fucking-great-advice.ru/api/random"
 
+const ADVICES_DB = "advices.db"
+const ADVICES_BUCKET = "advices"
+
 type Advice struct {
-	mut             sync.Mutex
-	Id  int32 //0 - no rain, 1 - light possible rain, 2 - rain
-	lastText  string
-	updateTime      time.Time
+	mut        sync.Mutex
+	Id         int32 //0 - no rain, 1 - light possible rain, 2 - rain
+	lastText   string
+	updateTime time.Time
+	db         *bolt.DB
 }
-
-
-
 
 func (advice *Advice) updateAdviceEveryNsec(N uint64 /*, b *tb.Bot,  chats *Chats*/) {
 
@@ -36,7 +38,6 @@ func (advice *Advice) updateAdviceEveryNsec(N uint64 /*, b *tb.Bot,  chats *Chat
 const TEXT_DEFAULT = "Падажжи, стартую..."
 const TEXT_FAIL = "Отдохни, блять."
 
-
 func (advice *Advice) isFresh() (fresh bool) {
 
 	log.Printf("Is advice fresh: %t", time.Since(advice.updateTime).Hours() < 6)
@@ -44,14 +45,13 @@ func (advice *Advice) isFresh() (fresh bool) {
 
 }
 
-
 func (advice *Advice) getfreshAdvice() (text string) {
 	text = advice.updateAdvice()
-	if len(text) <2 {
+	if len(text) < 2 {
 		if advice.isFresh() {
 			text = advice.lastText
 		} else {
-			text = TEXT_DEFAULT
+			text = TEXT_FAIL
 		}
 	}
 
@@ -66,16 +66,14 @@ func (advice *Advice) getAdvice() (text string) {
 	return
 }
 
-
 //{"id":26140,"text":"Как тратишь время, так блять и живёшь","sound":""}
 type JSAdvice struct {
-
-	Id	int `json:id`
-	Text string `json:text`
-	Sound string `json:sound`
+	Id    int    `json:"id"`
+	Text  string `json:"text"`
+	Sound string `json:"sound"`
 }
 
-func (advice *Advice) updateAdvice() (text string){
+func (advice *Advice) updateAdvice() (text string) {
 	var myClient = &http.Client{Timeout: 30 * time.Second}
 
 	res, err := myClient.Get(apiUrl)
@@ -89,16 +87,34 @@ func (advice *Advice) updateAdvice() (text string){
 				fmt.Println(err)
 				break
 			}
-			if len(jval.Text) > 0 {
+			if len(jval.Text) > 2 {
 
 				advice.mut.Lock()
 
-				fmt.Printf("Advice: id:%u, text: %s\n", jval.Id, jval.Text)
+				defer advice.mut.Lock()
+
+				fmt.Printf("Advice: id:%d, text: %s\n", jval.Id, jval.Text)
 
 				advice.lastText = jval.Text
 				text = jval.Text
 				advice.updateTime = time.Now()
 				advice.mut.Unlock()
+
+				if advice.db != nil {
+					err := advice.db.Update(func(tx *bolt.Tx) error {
+						b, err := tx.CreateBucketIfNotExists([]byte(ADVICES_BUCKET))
+						if err != nil {
+							return fmt.Errorf("Can't create a bucket: %s", err)
+						}
+						err = b.Put([]byte(fmt.Sprintf("%d", jval.Id)), []byte(jval.Text))
+						//log.Printf("Saved: %s -> %.2f", now.UTC().Format(time.UnixDate), f)
+						return err
+					})
+					if err != nil {
+						log.Printf("Error add new advice: %s", err)
+					}
+
+				}
 
 			}
 
@@ -114,9 +130,13 @@ func (advice *Advice) updateAdvice() (text string){
 	return
 }
 
-func InintWeather() (forecast *Advice) {
-	forecast = &Advice{Id: 0, lastText: ""}
-	go forecast.updateAdviceEveryNsec(ADVICE_UPDATE_INTERVAL)
+func InitAdvice() (advice *Advice) {
+	advice = &Advice{Id: 0, lastText: ""}
+
+	db, err := bolt.Open(ADVICES_DB, 0600, nil)
+	if err == nil {
+		advice.db = db
+	}
+	go advice.updateAdviceEveryNsec(ADVICE_UPDATE_INTERVAL)
 	return
 }
-
