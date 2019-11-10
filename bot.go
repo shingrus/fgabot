@@ -139,7 +139,7 @@ func (chats *Chats) SendToAllChatsDaily(b *tb.Bot, advice *Advice, force bool) {
 			//check if we already sent today
 			lastSendDate := getLastSendDate()
 			fmt.Printf("Time diff in hours: %f and force is %t\n", time.Since(lastSendDate).Hours(), force)
-			if force || (advice.isFresh() && time.Since(lastSendDate).Hours() > 23) {
+			if force || (advice.isFresh() /*&& time.Since(lastSendDate).Hours() > 23*/) {
 				text := advice.getAdvice()
 				for _, chat := range chats.getChats() {
 					_, err := b.Send(&chat, text)
@@ -229,7 +229,7 @@ func sendUserToChan(ch chan *tb.Chat, chat *tb.Chat) {
 
 func main() {
 
-	forecast := InintWeather()
+	forecast := InitAdvice()
 
 	chats := InitChats()
 	b, err := tb.NewBot(tb.Settings{
