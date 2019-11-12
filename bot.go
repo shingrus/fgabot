@@ -124,7 +124,7 @@ func (chats *Chats) getChats() (ret []tb.Chat) {
 	return
 }
 
-func (chats *Chats) SendToAllChatsDaily(b *tb.Bot, advice *Advice, force bool) {
+func (chats *Chats) SendToAllChatsDaily(b *tb.Bot, alladvices *Advices, force bool) {
 
 	hourToSend, err := strconv.Atoi(os.Getenv(hourToSendEnvVar))
 	if err != nil || hourToSend == 0 {
@@ -139,9 +139,10 @@ func (chats *Chats) SendToAllChatsDaily(b *tb.Bot, advice *Advice, force bool) {
 			//check if we already sent today
 			lastSendDate := getLastSendDate()
 			fmt.Printf("Time diff in hours: %f and force is %t\n", time.Since(lastSendDate).Hours(), force)
-			if force || (advice.isFresh() && time.Since(lastSendDate).Hours() > 23) {
-				text := advice.getAdvice()
+			if force || time.Since(lastSendDate).Hours() > 23 {
+
 				for _, chat := range chats.getChats() {
+					text := alladvices.getAdvice()
 					_, err := b.Send(&chat, text)
 					if err != nil {
 						switch err.Error() {
@@ -205,11 +206,11 @@ func InitChats() (chats *Chats) {
 	return
 }
 
-func sendAdvice(b *tb.Bot, chatChannel chan *tb.Chat, advice *Advice) {
+func sendAdvice(b *tb.Bot, chatChannel chan *tb.Chat, alladvices *Advices) {
 	for chat, ok := <-chatChannel; ok; chat, ok = <-chatChannel {
 
 		log.Printf("Send update to %d", chat.ID)
-		text := advice.getfreshAdvice()
+		text := alladvices.getAdvice()
 		message := text
 		_, err := b.Send(chat, message)
 		if err != nil {
